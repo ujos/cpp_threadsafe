@@ -4,57 +4,78 @@
 ## Background
 
 * There is an object. Object has state. State is deterministic and cannot be invariant after calling class methods.
-* Object state can consist of two or more independant sub-states (for example, incoming and outgoing queues, which do not depend on each other).
-  Real effective state in this case is a multiplcation of sub-states.
+* Object state can consist of two or more independent sub-states (for example, incoming and outgoing queues, which do not depend on each other).
+  Real effective state in this case is a multiplication of sub-states.
 * There are methods/functions, which read/modify state
 * There are threads which call methods/functions at the same or unique time
 
-Thus, relation is as following: Threads -> Instructions -> Data
+Thus, relation is as following: Threads -> Functions -> Data
 
 * Data can be shared (between two or more threads) or not shared
-* Instruction can be threadsafe or not
+* Function can be threadsafe or not. For example:
+  ```cpp
+    class X {
+        std::mutex m_;
+        int i;
+
+        // This function is not thread safe. After calling          
+        // it in two threads value can be incremented by 1 (not 2).
+        void foo() {        
+                            
+            ++i;
+        }
+
+
+        // This function is thread safe. After calling it in two
+        // threads value will be incremented by 2 always.              
+        void foo_threadsafe() {         
+            m_.lock();
+            foo();
+            m_.unlock();
+        }
+    };
+  ``` 
 
 ## Problems
 
 1. User calls methods without insurance of thread safety. 
-   Causes thread and data races.
-2. Mixing synchronized and unsynchronized methods calls in callstack. 
-   Causes unnessessary locks and performance degradations.
-3. Unintentional data mixing, which is read and modified asynchronously.
+   Causes data races.
+2. Interleaving synchronized and unsynchronized functions calls in callstack. 
+   Causes unnecessary locks and performance degradations.
+3. Unintentional variables mixing, which is read and modified asynchronously.
    Causes false sharing and performance degradation.
 
 ## Cases
 
-### Case #0
+### Case #1
 
 1. Object has 1 state: S1
 2. Inside thread #1 Method A accesses S1
 3. Inside thread #2 Method B accesses S1
 4. Access to S1 must be synchronized
 
-
-### Case #1
+### Case #2
 
 1. Object has 3 sub-states S1, S2, S3
 2. Inside thread #1 Method A accesses S1 and S2
 3. Inside thread #2 Method B accesses S2 and S3
-4. Access to S3 must be synchronized. S1 and S2 can be kept withouot synchronization.
+4. Access to S2 must be synchronized. S1 and S3 can be kept without synchronization.
 
-### Case #2
+### Case #3
 
 1. Object has state, which consists of few thread safe objects. 
 2. Access to those objects still must be synchronized to keep final state consistent.
 
-### Case #3
+### Case #4
 
 1. Regardless of found solution, there are legacy classes with thread safe interfaces.
 2. It is must be possible to use legacy classes in new environment as is
 
-### Case #4
+### Case #5
 
 1. Methods inside class do not use locks. Instead they use lock free + wait free approaches. Thus, there are no "lock/unlock" methods.
 
-### Case #6 
+### Case #6
 
 1. Methods inside class do not use locks. Instead they use lock free. Thus, there are no "lock/unlock" methods.
 
@@ -62,7 +83,7 @@ Thus, relation is as following: Threads -> Instructions -> Data
                        
 New qualifier should be introduced - `shared` - which can be applied to:
 
-* class fields
+* class data members
 * variables
 * parameters to methods/functions
 
@@ -70,31 +91,31 @@ If applied, it means that resource is shared between threads. Access to this res
 
 New qualifier should be introduced - `threadsafe` - which can be applied to:
 
-* methods - indicating that `this` parameter is `shared`
-* class fields - indicating that this field is self-synchronized and does not depend on other fields.
+* methods - indicating that `this` points to`shared` object
+* class data members - indicating that this field is self-synchronized and does not depend on other fields.
 
 New qualifier should be introduced - `???` - which will be applied to fields/variables/parameters of legacy classes
 If applied, all public methods of this class are considered as `threadsafe`.
 
-### Notes
+### Usages
 
 - If variable is `shared`, only `threadsafe` methods and fields are accessible.
 
   ```cpp
     struct X {
-        int i;
-        int foo();
+        Z f1;
+        Z foo();
 
-        threadsafe int j;
-        int bar() threadsafe;
+        threadsafe Z f2;
+        Z bar() threadsafe;
     };
 
     shared X x;
 
-    shared int* ptr = &x.i;             // ERROR
-    std::cout << x.i << std::endl;      // ERROR
+    shared Z* ptr = &x.f1;              // ERROR
+    std::cout << x.f1 << std::endl;     // ERROR
     std::cout << x.foo() << std::endl;  // ERROR
-    std::cout << x.j << std::endl;      // OK
+    std::cout << x.f2 << std::endl;     // OK
     std::cout << x.bar() << std::endl;  // OK
   ```
 
