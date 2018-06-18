@@ -3,23 +3,20 @@
 
 ## Background
 
-* There is an object. Object has state. State is deterministic and cannot be invariant after calling class methods.
-* Object state can consist of two or more independent sub-states (for example, incoming and outgoing queues, which do not depend on each other).
+* There is some object of some class. Object has a state identified by member variables.
+* Object state may consist of two or more independent sub-states (for example, incoming and outgoing queues, which do not depend on each other).
   Real effective state in this case is a multiplication of sub-states.
-* There are methods/functions, which read/modify state
-* There are threads which call methods/functions at the same or unique time
-
-Thus, relation is as following: Threads -> Functions -> Data
-
-* Data can be shared (between two or more threads) or not shared
-* Function can be threadsafe or not. For example:
+* There are member function, which read/modify state
+* There are threads which call functions at the same or unique time
+* Data can be shared between two or more threads (or not shared)
+* Function can be implemented as threadsafe or not. For example:
   ```cpp
     class X {
         std::mutex m_;
         int i;
 
         // This function is not thread safe. After calling          
-        // it in two threads value can be incremented by 1 (not 2).
+        // it in two threads final value of `i` cannot be not determined.
         void foo() {        
                             
             ++i;
@@ -38,46 +35,43 @@ Thus, relation is as following: Threads -> Functions -> Data
 
 ## Problems
 
-1. User calls methods without insurance of thread safety. 
-   Causes data races.
+1. User calls functions without insurance of thread safety. 
+   It causes data races.
 2. Interleaving synchronized and unsynchronized functions calls in callstack. 
    Causes unnecessary locks and performance degradations.
-3. Unintentional variables mixing, which is read and modified asynchronously.
-   Causes false sharing and performance degradation.
+3. Unintentional variables mixing in the class structure. If such variables are modified or read/modified asynchronously,
+   it causes false sharing and performance degradation.
 
 ## Cases
 
 ### Case #1
 
-1. Object has 1 state: S1
+1. Object has one state: S1
 2. Inside thread #1 Method A accesses S1
 3. Inside thread #2 Method B accesses S1
 4. Access to S1 must be synchronized
 
 ### Case #2
 
-1. Object has 3 sub-states S1, S2, S3
-2. Inside thread #1 Method A accesses S1 and S2
-3. Inside thread #2 Method B accesses S2 and S3
+1. Object has three sub-states S1, S2, S3
+2. Inside thread #1 member function A accesses S1 and S2
+3. Inside thread #2 member function B accesses S2 and S3
 4. Access to S2 must be synchronized. S1 and S3 can be kept without synchronization.
 
 ### Case #3
 
-1. Object has state, which consists of few thread safe objects. 
-2. Access to those objects still must be synchronized to keep final state consistent.
+1. Object has state, which consists of few thread safe variables. 
+2. Access to those variables still must be synchronized to keep final state consistent.
 
 ### Case #4
 
-1. Regardless of found solution, there are legacy classes with thread safe interfaces.
-2. It is must be possible to use legacy classes in new environment as is
+1. Regardless of found solution, there are currently used classes
+2. It must be possible to use legacy code in new environment.
+3. Legacy code should still be compilable (inline functions, class structure, etc)
 
 ### Case #5
 
-1. Methods inside class do not use locks. Instead they use lock free + wait free approaches. Thus, there are no "lock/unlock" methods.
-
-### Case #6
-
-1. Methods inside class do not use locks. Instead they use lock free. Thus, there are no "lock/unlock" methods.
+1. Some functions can be implemented in lock-free fashion. Still it is should be possible write code like that.
 
 ## Solution
                        
