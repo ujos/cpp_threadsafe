@@ -213,4 +213,6 @@ If applied, all public methods of this class are considered as `threadsafe`.
   z2.queue_.count();     // FAIL. `queue_` is not explicitly `threadsafe`
 
   ```
-  
+## Links
+
+* ["volatile: The Multithreaded Programmer's Best Friend" By Andrei Alexandrescu (February 01, 2001)](http://www.drdobbs.com/cpp/volatile-the-multithreaded-programmers-b/184403766)
