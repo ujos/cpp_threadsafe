@@ -1,5 +1,5 @@
 
-# Finding thread race conditions at compile time
+# Finding data race conditions at compile time
 
 ## Background
 
